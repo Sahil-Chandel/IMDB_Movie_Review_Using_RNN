@@ -1,22 +1,41 @@
-# Step 1: Import Libraries and Load the Model
+# Step 1: Import Libraries
+import os
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.datasets import imdb
 from tensorflow.keras.preprocessing import sequence
 from tensorflow.keras.models import load_model
+import streamlit as st
 
-# Load the IMDB dataset word index
-word_index = imdb.get_word_index()
-reverse_word_index = {value: key for key, value in word_index.items()}
+# Step 2: Load the IMDB Dataset and Word Index
+st.title('IMDB Movie Review Sentiment Analysis')
+st.write('Enter a movie review to classify it as positive or negative.')
 
-# Load the pre-trained model with ReLU activation
-model = load_model('imdb.h5')
+try:
+    # Load word index
+    word_index = imdb.get_word_index()
+    reverse_word_index = {value: key for key, value in word_index.items()}
+    st.success("IMDB dataset word index loaded successfully.")
+except Exception as e:
+    st.error(f"Failed to load IMDB dataset word index: {e}")
+    st.stop()
 
+# Step 3: Load the Pre-trained Model
+model_path = 'imdb.h5'
 
+if os.path.exists(model_path):
+    try:
+        model = load_model(model_path)
+        st.success("Pre-trained model loaded successfully.")
+    except Exception as e:
+        st.error(f"Failed to load model: {e}")
+        st.stop()
+else:
+    st.error("Model file 'imdb.h5' not found. Please ensure the file exists in the correct directory.")
+    st.stop()
 
-# Step 2: Helper Functions
-
-# Function to decode reviews
+# Step 4: Helper Functions
+# Function to decode encoded reviews back to text
 def decode_review(encoded_review):
     return ' '.join([reverse_word_index.get(i - 3, '?') for i in encoded_review])
 
@@ -27,28 +46,36 @@ def preprocess_text(text):
     padded_review = sequence.pad_sequences([encoded_review], maxlen=500)
     return padded_review
 
+# Step 5: Streamlit User Interface
+# Text area for user input
+user_input = st.text_area('Movie Review', height=150)
 
-# Streamlit app
-import streamlit as st
-
-
-st.title('IMDB Movie Review Sentiment Analysis')
-st.write('Enter a movie review to classify it as positive or negative.')
-
-# User input
-user_input = st.text_area('Movie Review')
-
+# Classification button
 if st.button('Classify'):
+    if not user_input.strip():
+        st.error("Please enter a valid movie review.")
+    else:
+        try:
+            # Preprocess input
+            preprocessed_input = preprocess_text(user_input)
 
-    preprocessed_input=preprocess_text(user_input)
+            # Make prediction
+            prediction = model.predict(preprocessed_input)
+            sentiment = 'Positive' if prediction[0][0] > 0.5 else 'Negative'
 
-    ## Make Prediction
-    prediction=model.predict(preprocessed_input)
-    sentiment='Positive' if prediction[0][0] > 0.5 else 'Negative'
-
-    # Display the Result
-    st.write(f'Sentiment: {sentiment}')
-    st.write(f'Prediction Score: {prediction[0][0]}')
+            # Display results
+            st.subheader("Classification Result")
+            st.write(f"Sentiment: **{sentiment}**")
+            st.write(f"Prediction Score: **{prediction[0][0]:.4f}**")
+        except Exception as e:
+            st.error(f"Error during classification: {e}")
 else:
-    st.write('Please enter a movie review.')
+    st.write("Enter a movie review and press 'Classify' to see the sentiment.")
 
+# Step 6: Notes for Deployment
+st.sidebar.title("Notes")
+st.sidebar.info("""
+- Ensure the `imdb.h5` model file is in the same directory as this script.
+- The model expects input reviews of up to 500 words.
+- Use a TensorFlow version compatible with the pre-trained model.
+""")
