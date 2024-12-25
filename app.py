@@ -21,7 +21,7 @@ except Exception as e:
     st.stop()
 
 # Step 3: Load the Pre-trained Model
-model_path = 'imdb.h5'
+model_path = 'imdb_new.h5'
 
 if os.path.exists(model_path):
     try:
